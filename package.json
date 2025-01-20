@@ -3,7 +3,7 @@
   "type": "module",
   "version": "1.0.0",
   "description": "echo-space",
-  "author": "Echo.<15333513184@163.com>",
+  "author": "tldssc<15333513184@163.com>",
   "license": "MIT",
   "engines": {
     "node": "^18.20.0 || >=20.0.0"

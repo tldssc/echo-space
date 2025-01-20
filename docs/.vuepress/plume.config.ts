@@ -22,9 +22,10 @@ export default defineThemeConfig({
       url: 'https://github.com/tldssc/echo-space/blob/master/LICENSE'
     },
   },
+  footer: false,
   profile: {
     // 个人信息
-    avatar: 'https://theme-plume.vuejs.press/plume.png',
+    avatar: 'https://pic2.ziyuan.wang/user/1725338975/2025/01/15a2b079aa481cf9f1b125ceb6c98d6_c80c9e8442cea.png',
     name: 'echo',
     description: '一个在北京打工的北漂仔',
     circle: true,
