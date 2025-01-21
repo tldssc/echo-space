@@ -9,11 +9,13 @@ export default defineThemeConfig({
   logo: 'https://pic2.ziyuan.wang/user/1725338975/2025/01/15a2b079aa481cf9f1b125ceb6c98d6_c80c9e8442cea.png',
   // 是否启用深色模式切换按钮
   appearance: true,
+  // 是否启用过渡动画效果
   transition: {
     page: true,
     postList: true,
     appearance: 'fade'
   },
+  // 版权信息
   copyright: {
     license: {
       // 许可证名称
