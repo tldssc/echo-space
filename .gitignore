@@ -8,4 +8,4 @@ docs/.vuepress/dist
 *.log
 
 .idea
-package-lock.json.
+package-lock.json
