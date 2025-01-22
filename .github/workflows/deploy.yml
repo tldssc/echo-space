@@ -1,0 +1,82 @@
+# 定义名称
+name: Deploy Project
+
+# 触发条件
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+# 定义任务
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 检出代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 设置 Node.js 环境
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.20.0'
+
+      # 安装依赖
+      - name: Install dependencies
+        run: npm install
+
+      # 构建项目并部署
+      - name: Build and Deploy
+        env:
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_KEY: ${{ secrets.SERVER_KEY }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+        run: |
+          # 获取当前时间（格式：YYYYMMDD_HHMMSS）
+          LOG_TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+          LOG_FILE="build_$LOG_TIMESTAMP.log"
+
+          # 执行构建并保存日志
+          echo "Building project..."
+          npm run docs:build > $LOG_FILE 2>&1 || { echo "Build failed"; cat $LOG_FILE; exit 1; }
+
+          # 确保 known_hosts 文件存在，并添加主机密钥
+          mkdir -p ~/.ssh
+          echo "Adding $SERVER_HOST to known_hosts..."
+          ssh-keyscan -p $SERVER_PORT -H $SERVER_HOST >> ~/.ssh/known_hosts || { echo "ssh-keyscan failed for $SERVER_HOST on port $SERVER_PORT"; exit 1; }
+
+          # 确保目录存在
+          mkdir -p /tmp/github_action
+          # 将密钥写入指定目录
+          echo "Writing deploy key to /tmp/github_action/deploy_key.pem..."
+          echo "${SERVER_KEY}" > /tmp/github_action/deploy_key.pem || { echo "Failed to write deploy key"; exit 1; }
+
+          # 修改密钥权限
+          chmod 600 /tmp/github_action/deploy_key.pem || { echo "Failed to chmod deploy key"; exit 1; }
+
+          # 测试连接
+          echo "Testing SSH connection to $SERVER_HOST..."
+          ssh -i /tmp/github_action/deploy_key.pem -p $SERVER_PORT $SERVER_USER@$SERVER_HOST "echo 'Connection successful'" || { echo "SSH connection failed"; exit 1; }
+
+          # 上传构建日志到服务器
+          echo "Uploading log file to server..."
+          ssh -i /tmp/github_action/deploy_key.pem -p $SERVER_PORT $SERVER_USER@$SERVER_HOST "mkdir -p /usr/local/nginx/logs/github_action" || { echo "Failed to create log directory"; exit 1; }
+          scp -i /tmp/github_action/deploy_key.pem -P $SERVER_PORT $LOG_FILE $SERVER_USER@$SERVER_HOST:/usr/local/nginx/logs/github_action/ || { echo "Failed to upload log file"; exit 1; }
+
+          # 清理服务器上旧文件
+          echo "Clearing existing files on server..."
+          ssh -i /tmp/github_action/deploy_key.pem -p $SERVER_PORT $SERVER_USER@$SERVER_HOST "rm -rf /usr/local/nginx/html/*" || { echo "Failed to clear server files"; exit 1; }
+
+          # 上传 dist 文件
+          echo "Uploading dist files to server..."
+          scp -i /tmp/github_action/deploy_key.pem -P $SERVER_PORT -r ./docs/.vuepress/dist/* $SERVER_USER@$SERVER_HOST:/usr/local/nginx/html || { echo "Failed to upload dist files"; exit 1; }
+
+          # 清理本地临时文件
+          echo "Removing deploy key and log file..."
+          rm /tmp/github_action/deploy_key.pem $LOG_FILE || { echo "Failed to remove temporary files"; exit 1; }
